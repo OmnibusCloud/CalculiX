@@ -55,9 +55,14 @@ case "$PLATFORM" in
         ;;
     linux-x64)
         # The oneMKL shared object ships beside the executable, so look there
-        # first and do not depend on the machine having MKL installed. The
-        # doubled $ survives make's expansion of a command-line variable.
-        LIBS="$LIBS -Wl,-rpath,\$\$ORIGIN"
+        # first and do not depend on the machine having MKL installed.
+        #
+        # $ORIGIN has to survive two expansions to reach the linker intact: the
+        # doubled $ gets through make's expansion of a command-line variable,
+        # and the single quotes stop the recipe's shell from expanding what is
+        # left into nothing. Getting only the first of those right produces a
+        # binary that links and then cannot find its own libraries.
+        LIBS="$LIBS -Wl,-rpath,'\$\$ORIGIN'"
         ;;
 esac
 
@@ -95,6 +100,16 @@ if [ "$WITH_PARDISO" = "1" ]; then
         linux-x64) ls "$OUT"/libiomp5.so >/dev/null 2>&1 || die "the Intel OpenMP runtime was not staged" ;;
     esac
 fi
+
+# Cheapest possible proof that the kit is self-contained: start it, from its
+# own directory, with nothing else on the library path. With no arguments ccx
+# prints its usage and exits 0. A binary that links but cannot find its own
+# shared libraries fails here, at the end of the build, instead of silently
+# producing no results later.
+log "checking that the staged executable starts"
+( cd "$OUT" && ./"$CCX_OUTPUT" >/dev/null 2>"$WORK/start.err" ) \
+    || die "the staged executable does not start:
+$(cat "$WORK/start.err" 2>/dev/null)"
 
 cp "$REPO_ROOT/LICENSE" "$OUT/LICENSE.CalculiX.GPL-2.0.txt"
 cp "$REPO_ROOT/PROVENANCE.md" "$OUT/PROVENANCE.md"
