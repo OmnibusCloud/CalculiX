@@ -59,6 +59,51 @@ We do **not** redistribute this binary, and we do not copy it out of a PrePoMax
 installation. It is used only as a comparison target: our build must agree with
 it numerically on the deck corpus.
 
+### Agreement measured so far
+
+First comparison, `beamp` (static beam) run through both binaries with their
+default solver, single-threaded:
+
+| | |
+|---|---|
+| Lines that differ | 6 of 46 |
+| Worst absolute difference | `4.4e-11` |
+| Every physically non-zero value | **identical** |
+
+The six differing lines carry quantities that are analytically zero — `5.4e-12`
+against `1.3e-11` and the like — while `8.999640E+00`, `-7.199727E+01`,
+`-1.799943E+01` and `1.000000E+00` match digit for digit. That is round-off in
+the noise floor, not a difference in the answer.
+
+**One deck is not the gate.** The gate is `build/verify.sh` with
+`REFERENCE_CCX` set, over all 610.
+
+### Linked solvers, and where we differ from the reference
+
+| Solver | Reference | Ours (`win-x64`) |
+|---|---|---|
+| SPOOLES (multithreaded, the ccx default) | ✅ | ✅ |
+| PARDISO (what PrePoMax writes by default) | ✅ | ✅ |
+| ARPACK (`*FREQUENCY`, `*BUCKLE`) | ✅ | ✅ |
+| PaStiX | ✅ | ❌ **not yet** |
+
+Measured, not assumed — forcing each solver onto `beamp` with our build:
+
+```
+SPOOLES  exit=0    result written
+PARDISO  exit=0    result written
+PASTIX   exit=201  *ERROR in linstatic: the PASTIX library is not linked
+```
+
+PrePoMax exposes PaStiX in its solver list (`SolverType` in `CaeModel.dll`
+carries `Spooles`, `Pardiso`, `PaStiX`), so this is reachable by an ordinary
+user, and **an unlinked solver in ccx is a hard stop, not a fallback**. Anyone
+who has chosen PaStiX would meet a failure they did not have before — which is
+why PaStiX blocks the Windows kit rather than merely postponing a feature.
+
+Worth knowing for whatever consumes the output: the failed run still leaves a
+45-byte `.dat` behind. Presence of the file is not evidence of a result.
+
 ## Build dependencies, pinned
 
 | Dependency | Version | URL | SHA-256 |
