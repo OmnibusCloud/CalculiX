@@ -102,10 +102,21 @@ jobs:
       - name: Install toolchain
         run: brew install gcc cmake
 
+      # Apple's clang has no -fopenmp, and CalculiX wants it for both the C and
+      # the Fortran halves. Use the Homebrew GCC for both, which is also what
+      # the other two platforms use. The version is discovered rather than
+      # pinned: the formula's major version moves, the binary names move with
+      # it, and a hard-coded gcc-14 would break silently on a Tuesday.
+      - name: Select the compilers
+        run: |
+          gcc_bin=$(ls "$(brew --prefix)"/bin/gcc-[0-9]* | sort -V | tail -1)
+          fc_bin=$(ls "$(brew --prefix)"/bin/gfortran-[0-9]* | sort -V | tail -1)
+          echo "CC=$gcc_bin" >> "$GITHUB_ENV"
+          echo "FC=$fc_bin" >> "$GITHUB_ENV"
+          echo "using $gcc_bin and $fc_bin"
+
       - name: Build
         env:
-          CC: clang
-          FC: gfortran-14
           WITH_PARDISO: '0'
           WITH_PASTIX: ${{ inputs.with_pastix && '1' || '0' }}
         run: sh build/build.sh

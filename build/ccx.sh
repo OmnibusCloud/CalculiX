@@ -36,6 +36,7 @@ cp "$BUILD_DIR/Makefile.ccx" "$SRC_BUILD/Makefile.ccx"
 
 CFLAGS="$(ccx_cflags)"
 FFLAGS="$(ccx_fflags)"
+MAIN_CFLAGS="$(ccx_main_cflags)"
 
 # SPOOLES is found through a relative path baked into the CFLAGS by upstream
 # convention (-I ../SPOOLES.2.2), which is why the build tree puts the two
@@ -70,7 +71,7 @@ case "$PLATFORM" in win-x64) CCX_OUTPUT=ccx.exe ;; esac
 ( cd "$SRC_BUILD" && make -f Makefile.ccx \
     CCX_VERSION="$CCX_VERSION" \
     CC="${CC:-cc}" FC="${FC:-gfortran}" \
-    CFLAGS="$CFLAGS" FFLAGS="$FFLAGS" \
+    CFLAGS="$CFLAGS" FFLAGS="$FFLAGS" MAIN_CFLAGS="$MAIN_CFLAGS" \
     LIBS="$LIBS" CCX_OUTPUT="$CCX_OUTPUT" \
     -j "$(cpu_count)" )
 

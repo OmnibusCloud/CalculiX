@@ -16,6 +16,10 @@ FFLAGS      ?= -Wall -O2
 LIBS        ?=
 CCX_OUTPUT  ?= ccx
 
+# Extra flags for the two entry-point translation units; see ccx_main_cflags
+# in build/config.sh for why they need their own.
+MAIN_CFLAGS ?=
+
 .c.o :
 	$(CC) $(CFLAGS) -c $< -o $@
 .f.o :
@@ -30,6 +34,12 @@ OCCXC    = $(SCCXC:.c=.o)
 OCCXMAIN = $(SCCXMAIN:.c=.o)
 
 all: $(CCX_OUTPUT)
+
+ccx_$(CCX_VERSION).o: ccx_$(CCX_VERSION).c
+	$(CC) $(CFLAGS) $(MAIN_CFLAGS) -c $< -o $@
+
+ccx_$(CCX_VERSION)step.o: ccx_$(CCX_VERSION)step.c
+	$(CC) $(CFLAGS) $(MAIN_CFLAGS) -c $< -o $@
 
 $(CCX_OUTPUT): $(OCCXMAIN) ccx.a
 	$(FC) $(FFLAGS) -o $@ $(OCCXMAIN) ccx.a $(LIBS)

@@ -79,11 +79,35 @@ ccx_cflags() {
     _f="-Wall -O2 -fopenmp -I ../SPOOLES.2.2 -DARCH=\"Linux\" -DSPOOLES -DMATRIXSTORAGE"
     [ "$WITH_MT"      = "1" ] && _f="$_f -DUSE_MT=1"
     [ "$WITH_ARPACK"  = "1" ] && _f="$_f -DARPACK"
-    [ "$WITH_PARDISO" = "1" ] && _f="$_f -DPARDISO"
+    [ "$WITH_PARDISO" = "1" ] && _f="$_f -DPARDISO -I$MKL_INCLUDE_DIR"
     [ "$WITH_PASTIX"  = "1" ] && _f="$_f -DPASTIX -I$PASTIX_PREFIX/include"
     echo "$_f"
 }
 
 ccx_fflags() {
     echo "-Wall -O2 -fopenmp"
+}
+
+# Extra flags for the two entry-point translation units only.
+#
+# ccx_<v>.c and ccx_<v>step.c open with, at FILE SCOPE:
+#
+#     #ifdef __WIN32
+#     _set_output_format(_TWO_DIGIT_EXPONENT);
+#     #endif
+#
+# which is not a call — a statement cannot execute at file scope — but a
+# declaration, and one that now collides with MinGW's own prototype. Older GCC
+# let it through as implicit-int; GCC 14 does not, and the Windows build stops
+# there. Undefining __WIN32 for these two files removes a construct that never
+# had a runtime effect, and leaves it defined for getSystemCPUs.c, which is the
+# only place it means anything.
+#
+# Confirmed against the reference binary's output, which writes two-digit
+# exponents (E+00) — exactly what a build where that statement never ran does.
+ccx_main_cflags() {
+    case "$PLATFORM" in
+        win-x64) echo "-U__WIN32" ;;
+        *)       echo "" ;;
+    esac
 }
