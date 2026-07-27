@@ -102,14 +102,21 @@ if [ "$WITH_PARDISO" = "1" ]; then
 fi
 
 # Cheapest possible proof that the kit is self-contained: start it, from its
-# own directory, with nothing else on the library path. With no arguments ccx
-# prints its usage and exits 0. A binary that links but cannot find its own
-# shared libraries fails here, at the end of the build, instead of silently
-# producing no results later.
+# own directory, with nothing else on the library path, and require its own
+# output. A binary that links but cannot find its shared libraries fails here,
+# at the end of the build, rather than as silent "no result" lines later.
+#
+# Not by exit code: with no arguments ccx prints its usage and calls the
+# Fortran stop routine, which exits 201 — measured against the reference binary
+# as well, so 201 is the SUCCESS case here. The banner is the real evidence
+# that our code ran at all.
 log "checking that the staged executable starts"
-( cd "$OUT" && ./"$CCX_OUTPUT" >/dev/null 2>"$WORK/start.err" ) \
-    || die "the staged executable does not start:
-$(cat "$WORK/start.err" 2>/dev/null)"
+_banner=$( cd "$OUT" && ./"$CCX_OUTPUT" 2>"$WORK/start.err" || true )
+case "$_banner" in
+    *Usage*) log "  starts and reports: $_banner" ;;
+    *) die "the staged executable did not run:
+$(cat "$WORK/start.err" 2>/dev/null)" ;;
+esac
 
 cp "$REPO_ROOT/LICENSE" "$OUT/LICENSE.CalculiX.GPL-2.0.txt"
 cp "$REPO_ROOT/PROVENANCE.md" "$OUT/PROVENANCE.md"
