@@ -12,14 +12,36 @@ Upstream lives at <http://www.calculix.de> and <http://www.dhondt.de>.
 
 ## Why this repository exists
 
-OmnibusCloud ships `ccx` in two places, for two different reasons:
+OmnibusCloud ships `ccx` in two places, for two different reasons — and, as of
+2026-07-27, **from two different sources**:
 
 1. **Beside the PrePoMax solver shim**, so that decks the cloud does not take
-   still solve locally, out of the box, with no path hunting. Windows only —
-   PrePoMax is Windows only.
+   still solve locally, out of the box, with no path hunting. Windows only,
+   because PrePoMax is Windows only. **This one is upstream's own binary**,
+   redistributed unmodified, not a build of ours — see below.
 2. **As an asset of the CalculiX controller**, so that a compute node can run
    a full, unrestricted `ccx` job. Nodes are heterogeneous, so this one needs
-   `win-x64`, `linux-x64` and `macos-arm64`.
+   `win-x64`, `linux-x64` and `macos-arm64`, and **this is what the pipeline
+   here builds**.
+
+### Why the shim gets upstream's binary rather than ours
+
+The shim's job is to change nothing about work the cloud does not take. The
+binary already on the engineer's machine is upstream's official Windows build
+(proven byte-for-byte, see [PROVENANCE.md](PROVENANCE.md)), and it links
+PaStiX. Ours does not yet, and `ccx` treats an unlinked solver as a hard stop
+— so anyone who had selected PaStiX in PrePoMax would meet a failure they did
+not have before.
+
+Redistributing the same binary makes that risk exactly zero rather than small:
+it is not "numerically equivalent to what you had", it *is* what you had. It
+also removes PaStiX from the critical path, which is the expensive dependency
+in this whole repository.
+
+Our own builds keep their reason for existing — the controller needs three
+platforms and there is no upstream binary for two of them — but there the
+constraint is different, because we control both ends and can decline work a
+node's solver cannot do.
 
 Distributing a GPL program obliges us to offer its complete corresponding
 source, together with the scripts that control its compilation. That is this
@@ -66,6 +88,14 @@ the linked set matters, and why it is stated per platform below.
 
 All three build green and pass upstream's acceptance suite. The size gap is the
 oneMKL runtime, which is most of what a Windows or Linux kit weighs.
+
+PaStiX is **staged everywhere and blocking nowhere**, now that the shim ships
+upstream's binary. A node whose `ccx` lacks a solver a deck asks for is a
+dispatch question, and the platform already answers it: controller archive
+variants carry `runtimeTargets` and `requiredCapabilities`, and clients
+advertise capabilities, so a variant can say which solvers its bundled `ccx`
+has. Capability is the right axis, not OS — macOS lacking PARDISO is
+OS-determined, but a Windows kit lacking PaStiX is not.
 
 `macos-arm64` cannot link PARDISO — Intel oneMKL is x86-64 only. A deck that
 asks for `SOLVER=PARDISO` therefore fails on a macOS node while succeeding on
