@@ -77,7 +77,47 @@ REPORT="$WORK/verify/report.txt"
 mkdir -p "$WORK/verify"
 : > "$REPORT"
 
-log "comparing against the reference results shipped with $CCX_VERSION"
+# compare_run <results-dir> <expected-dir> <expected-suffix> <label>
+#
+# Runs upstream's own tolerance checker over one pair of result sets. It works
+# in a scratch directory rather than in place: the earlier version overwrote
+# the shipped .dat.ref files with the reference binary's output, which made a
+# second phase impossible to interpret and a re-run impossible to trust.
+compare_run() {
+    _results="$1"; _expected="$2"; _suffix="$3"; _label="$4"
+    _dir="$WORK/verify/cmp-$_label"
+
+    rm -rf "$_dir"; mkdir -p "$_dir"
+    cp "$SUITE/datcheck.pl" "$_dir/"
+
+    _count=0
+    for _f in "$_results"/*.dat; do
+        [ -e "$_f" ] || continue
+        _job=$(basename "$_f" .dat)
+        [ -f "$_expected/$_job$_suffix" ] || continue
+        cp "$_f" "$_dir/$_job.dat"
+        cp "$_expected/$_job$_suffix" "$_dir/$_job.dat.ref"
+        _count=$((_count + 1))
+    done
+
+    ( cd "$_dir" && for _f in *.dat; do
+        case "$_f" in *.dat.ref) continue ;; esac
+        perl ./datcheck.pl "${_f%.dat}" 2>&1 || true
+      done )
+
+    echo "  ($_count decks compared)" >&2
+}
+
+section() {
+    printf '\n===== %s =====\n' "$1" >> "$REPORT"
+}
+
+log "A: our results against the reference FILES upstream ships"
+section "A: ours vs the reference results shipped with $CCX_VERSION"
+compare_run "$WORK/verify/ours" "$SUITE" ".dat.ref" "a-ours-vs-refs" >> "$REPORT"
+
+# Decks the build did not produce at all are a different failure from a
+# numerical one, and the checker cannot see them — it compares what exists.
 ( cd "$WORK/verify/ours"
   for f in *.inp; do
       _job=${f%.inp}
@@ -85,17 +125,12 @@ log "comparing against the reference results shipped with $CCX_VERSION"
       if [ -n "${VERIFY_ONLY:-}" ]; then
           case " $VERIFY_ONLY " in *" $_job "*) ;; *) continue ;; esac
       fi
-      if [ ! -f "$_job.dat" ]; then
-          # "no .dat" on its own says nothing about why. The solver's own
-          # output does, and without it a failing platform costs a round trip
-          # through CI to learn one line.
-          echo "MISSING  $_job.dat was not produced; last lines of $_job.log:"
-          sed 's/^/         | /' "$_job.log" 2>/dev/null | tail -15
-          continue
-      fi
-      # datcheck.pl is upstream's own tolerance comparison; it prints only on
-      # disagreement, which is what makes an empty report meaningful.
-      perl ./datcheck.pl "$_job" 2>&1 || true
+      [ -f "$_job.dat" ] && continue
+      # "no .dat" on its own says nothing about why. The solver's own output
+      # does, and without it a failing platform costs a round trip through CI
+      # to learn one line.
+      echo "MISSING  $_job.dat was not produced; last lines of $_job.log:"
+      sed 's/^/         | /' "$_job.log" 2>/dev/null | tail -15
   done ) >> "$REPORT"
 
 # ---------------------------------------------------------------------------
@@ -155,22 +190,33 @@ if [ -n "${REFERENCE_CCX:-}" ]; then
     log "running the same decks with the reference binary"
     run_suite "$REFERENCE_CCX" "$WORK/verify/reference"
 
-    log "comparing our results against the reference binary's, deck by deck"
-    ( cd "$WORK/verify/ours"
-      for f in *.inp; do
-          _job=${f%.inp}
-          if [ -n "${VERIFY_ONLY:-}" ]; then
-              case " $VERIFY_ONLY " in *" $_job "*) ;; *) continue ;; esac
-          fi
-          _theirs="$WORK/verify/reference/$_job.dat"
-          [ -f "$_theirs" ] || continue
-          [ -f "$_job.dat" ] || { echo "DRIFT    $_job: we produced no .dat, the reference did"; continue; }
-          cp "$_theirs" "$_job.dat.ref"
-          perl ./datcheck.pl "$_job" 2>&1 || true
+    # Phase B is the one that was missing, and without it phase A is
+    # unreadable. Some decks in this suite are ill-conditioned enough that the
+    # reference BINARY does not reproduce the reference FILES either — contact,
+    # complex eigenvalues, acoustics. Measuring that baseline is the difference
+    # between "our build deviates on six decks" and "our build deviates on six
+    # decks, four of which the incumbent deviates on too".
+    log "B: the reference binary against the same reference FILES (the baseline)"
+    section "B: the reference binary vs the reference results shipped with $CCX_VERSION"
+    compare_run "$WORK/verify/reference" "$SUITE" ".dat.ref" "b-ref-vs-refs" >> "$REPORT"
+
+    # Phase C is the question the local-fallback promise rests on: not "is our
+    # build correct" but "does it answer what the engineer's binary answers".
+    log "C: our results against the reference binary's, deck by deck"
+    section "C: ours vs the reference binary — the only comparison about numbers MOVING"
+    compare_run "$WORK/verify/ours" "$WORK/verify/reference" ".dat" "c-ours-vs-ref" >> "$REPORT"
+
+    ( cd "$WORK/verify/reference"
+      for f in *.dat; do
+          [ -e "$f" ] || continue
+          [ -f "$WORK/verify/ours/$f" ] && continue
+          echo "DRIFT    ${f%.dat}: we produced no .dat, the reference did"
       done ) >> "$REPORT"
 fi
 
-if [ -s "$REPORT" ]; then
+# Section headers alone are not findings; a report that carries nothing else is
+# a pass.
+if grep -qvE '^\s*$|^=====' "$REPORT" 2>/dev/null; then
     FAILED=1
     warn "differences reported:"
     cat "$REPORT"

@@ -59,24 +59,60 @@ We do **not** redistribute this binary, and we do not copy it out of a PrePoMax
 installation. It is used only as a comparison target: our build must agree with
 it numerically on the deck corpus.
 
-### Agreement measured so far
+### Agreement measured over the whole suite
 
-First comparison, `beamp` (static beam) run through both binaries with their
-default solver, single-threaded:
+Run 2026-07-27: `win-x64`, both binaries over the same 605–606 decks,
+single-threaded, on a machine that built neither of them.
 
-| | |
-|---|---|
-| Lines that differ | 6 of 46 |
-| Worst absolute difference | `4.4e-11` |
-| Every physically non-zero value | **identical** |
+| Phase | Question | Deviations |
+|---|---|---|
+| **A** | our build vs the reference **files** upstream ships | **6** of 605 |
+| **B** | the reference **binary** vs those same files | **9** of 605 |
+| **C** | our build vs the reference **binary** | **3** of 606 |
 
-The six differing lines carry quantities that are analytically zero — `5.4e-12`
-against `1.3e-11` and the like — while `8.999640E+00`, `-7.199727E+01`,
-`-1.799943E+01` and `1.000000E+00` match digit for digit. That is round-off in
-the noise floor, not a difference in the answer.
+311 of the 606 `.dat` files are **byte-identical** between the two binaries.
 
-**One deck is not the gate.** The gate is `build/verify.sh` with
-`REFERENCE_CCX` set, over all 610.
+Phase B is the reason phase A is readable at all. Parts of this suite are
+ill-conditioned enough that upstream's own binary does not reproduce upstream's
+own published results either, so "we deviate on six decks" means nothing until
+you know the incumbent deviates on nine.
+
+- Both deviate: `acou1`, `beamfsh1`, `beamptied5`, `beamptied6`.
+- **Only we do:** `acou2`, `rotor2`.
+- **Only the incumbent does:** `beamt6`, `contact15`, `contact17`, `load1`,
+  `truss2`.
+
+And all three phase-C decks — `contact15`, `contact17`, `load1` — come from
+that last group. On those, upstream's published result, the incumbent and our
+build are three different answers, and ours is the one that matches what
+upstream published.
+
+What the deviations are, by kind:
+
+- `acou2` is a **sign flip on an eigenvector component**: `-9.999949e-02`
+  against `+9.999949e-02`, seven digits of agreement in magnitude. Eigenvector
+  phase is arbitrary; this is not an error.
+- `rotor2` is `*COMPLEX FREQUENCY` — 13% on one value. Complex eigenvalues run
+  through ARPACK, and ARPACK runs on whichever LAPACK it was linked against;
+  ours is oneMKL, the reference's was OpenBLAS.
+- `contact15`, `contact17` are `*DYNAMIC` with contact, `load1` is `*STATIC`
+  with contact. Active-set problems can converge to different states from
+  arithmetic ordering alone, which is also why the incumbent misses the
+  published values on them.
+
+**None of them is conduction or plain linear statics** — the deviations sit in
+contact, complex eigenvalue and acoustic analyses.
+
+**Consequence for WitSweep, which runs full `ccx` on heterogeneous nodes:** on
+contact problems the achievable agreement between two honest builds is percent,
+not round-off. Determinism there has to be stated as a tolerance and measured,
+not assumed.
+
+Reproduce with:
+
+```sh
+REFERENCE_CCX='…/PrePoMax v2.5.0/Solver/ccx_dynamic.exe' build/verify.sh
+```
 
 ### Linked solvers, and where we differ from the reference
 
