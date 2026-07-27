@@ -105,6 +105,29 @@ ccx_fflags() {
 #
 # Confirmed against the reference binary's output, which writes two-digit
 # exponents (E+00) — exactly what a build where that statement never ran does.
+# Link flags.
+#
+# On Windows the compiler runtime is linked STATICALLY. Without this the
+# executable imports libgfortran-5.dll, libgcc_s_seh-1.dll, libgomp-1.dll and
+# libwinpthread-1.dll from the MSYS2 installation that built it, and starts
+# only on a machine that has one — everywhere else it dies with
+# STATUS_DLL_NOT_FOUND before printing a line. The reference binary imports
+# nothing but KERNEL32, msvcrt, psapi and mkl_rt, which is what this matches.
+#
+# oneMKL stays dynamic: it is a DLL by design, and shipping it beside the
+# executable is deliberate.
+# On Linux a fully static link against glibc brings its own problems, so the
+# compiler runtime is linked statically where that is safe and whatever
+# remains is staged beside the executable and found through -rpath $ORIGIN. A
+# compute node has no reason to have gfortran installed.
+ccx_ldflags() {
+    case "$PLATFORM" in
+        win-x64)   echo "-static" ;;
+        linux-x64) echo "-static-libgcc -static-libgfortran" ;;
+        *)         echo "" ;;
+    esac
+}
+
 ccx_main_cflags() {
     case "$PLATFORM" in
         win-x64) echo "-U__WIN32" ;;

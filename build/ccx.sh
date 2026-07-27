@@ -36,6 +36,7 @@ cp "$BUILD_DIR/Makefile.ccx" "$SRC_BUILD/Makefile.ccx"
 
 CFLAGS="$(ccx_cflags)"
 FFLAGS="$(ccx_fflags)"
+LDFLAGS="$(ccx_ldflags)"
 MAIN_CFLAGS="$(ccx_main_cflags)"
 
 # SPOOLES is found through a relative path baked into the CFLAGS by upstream
@@ -76,7 +77,7 @@ case "$PLATFORM" in win-x64) CCX_OUTPUT=ccx.exe ;; esac
 ( cd "$SRC_BUILD" && make -f Makefile.ccx \
     CCX_VERSION="$CCX_VERSION" \
     CC="${CC:-cc}" FC="${FC:-gfortran}" \
-    CFLAGS="$CFLAGS" FFLAGS="$FFLAGS" MAIN_CFLAGS="$MAIN_CFLAGS" \
+    CFLAGS="$CFLAGS" FFLAGS="$FFLAGS" LDFLAGS="$LDFLAGS" MAIN_CFLAGS="$MAIN_CFLAGS" \
     LIBS="$LIBS" CCX_OUTPUT="$CCX_OUTPUT" \
     -j "$(cpu_count)" )
 
@@ -101,20 +102,57 @@ if [ "$WITH_PARDISO" = "1" ]; then
     esac
 fi
 
+# Whatever compiler runtime survived the static link gets staged too. A compute
+# node has no reason to have gfortran installed, and the executable is useless
+# to it if it needs one.
+if [ "$PLATFORM" = "linux-x64" ]; then
+    ldd "$OUT/$CCX_OUTPUT" 2>/dev/null | while read -r soname _arrow path _rest; do
+        case "$soname" in
+            libgfortran*|libgomp*|libquadmath*|libgcc_s*)
+                [ -f "$path" ] && cp -L "$path" "$OUT/" && log "  staged runtime dependency $soname"
+                ;;
+        esac
+    done
+fi
+
+# On Windows the check below cannot see the difference between a self-contained
+# executable and one leaning on the MSYS2 installation that built it, because
+# that installation is on PATH here. Read the import table instead.
+if [ "$PLATFORM" = "win-x64" ] && command -v objdump >/dev/null 2>&1; then
+    _imports=$(objdump -p "$OUT/$CCX_OUTPUT" | sed -n 's/^\s*DLL Name: //p')
+    log "  imports: $(echo "$_imports" | tr '\n' ' ')"
+    for _dll in $_imports; do
+        case "$_dll" in
+            libgfortran*|libgcc_s*|libgomp*|libwinpthread*|libquadmath*|libstdc++*)
+                die "the executable imports $_dll from the build toolchain — it would not start on a machine without MSYS2.
+The reference binary imports nothing but KERNEL32, msvcrt, psapi and mkl_rt." ;;
+        esac
+    done
+fi
+
 # Cheapest possible proof that the kit is self-contained: start it, from its
-# own directory, with nothing else on the library path, and require its own
-# output. A binary that links but cannot find its shared libraries fails here,
-# at the end of the build, rather than as silent "no result" lines later.
+# own directory, with nothing on PATH but the system directories, and require
+# its own output. A binary that links but cannot find its shared libraries
+# fails here, at the end of the build, rather than as silent "no result" lines
+# later — or worse, only on the engineer's machine.
 #
 # Not by exit code: with no arguments ccx prints its usage and calls the
 # Fortran stop routine, which exits 201 — measured against the reference binary
 # as well, so 201 is the SUCCESS case here. The banner is the real evidence
 # that our code ran at all.
-log "checking that the staged executable starts"
-_banner=$( cd "$OUT" && ./"$CCX_OUTPUT" 2>"$WORK/start.err" || true )
+case "$PLATFORM" in
+    win-x64)
+        _sysroot=$(cygpath -u "${SYSTEMROOT:-C:\\Windows}" 2>/dev/null || echo /c/Windows)
+        _bare_path="$_sysroot/System32:$_sysroot"
+        ;;
+    *) _bare_path="/usr/bin:/bin" ;;
+esac
+
+log "checking that the staged executable starts with a bare PATH"
+_banner=$( cd "$OUT" && PATH="$_bare_path" ./"$CCX_OUTPUT" 2>"$WORK/start.err" || true )
 case "$_banner" in
     *Usage*) log "  starts and reports: $_banner" ;;
-    *) die "the staged executable did not run:
+    *) die "the staged executable did not run with only the system directories on PATH:
 $(cat "$WORK/start.err" 2>/dev/null)" ;;
 esac
 

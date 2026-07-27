@@ -13,6 +13,7 @@ CC          ?= cc
 FC          ?= gfortran
 CFLAGS      ?= -Wall -O2
 FFLAGS      ?= -Wall -O2
+LDFLAGS     ?=
 LIBS        ?=
 CCX_OUTPUT  ?= ccx
 
@@ -42,7 +43,7 @@ ccx_$(CCX_VERSION)step.o: ccx_$(CCX_VERSION)step.c
 	$(CC) $(CFLAGS) $(MAIN_CFLAGS) -c $< -o $@
 
 $(CCX_OUTPUT): $(OCCXMAIN) ccx.a
-	$(FC) $(FFLAGS) -o $@ $(OCCXMAIN) ccx.a $(LIBS)
+	$(FC) $(FFLAGS) $(LDFLAGS) -o $@ $(OCCXMAIN) ccx.a $(LIBS)
 
 ccx.a: $(OCCXF) $(OCCXC)
 	ar rs $@ $?
