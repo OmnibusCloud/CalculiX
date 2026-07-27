@@ -29,6 +29,8 @@ case "$PLATFORM" in
         MKL_DEV_SHA256=7a000cf0d680cc6acd3c513949d2e8c50aa34cf2b618e7235f98ec1b2b9b3b09
         MKL_INC_URL=https://files.pythonhosted.org/packages/f5/97/6ab9983c7e468d0a4f58189c8d63719a25c08c9579cde170095f00d05480/mkl_include-2022.2.1-py2.py3-none-win_amd64.whl
         MKL_INC_SHA256=460874c6e4b7ce5e569fe0ec846ec4de282fc1a9556215201d57ee10c7cfbdd6
+        MKL_OMP_URL=https://files.pythonhosted.org/packages/a0/39/9be1803f45c779ef2df43920fe24140915b992a1e42bf9a37e3beec1ee48/intel_openmp-2022.2.1-py2.py3-none-win_amd64.whl
+        MKL_OMP_SHA256=77414289c14cb48d7f99926da69c9ced9e70c27feb825b0608f304f9d49844ae
         ;;
     linux-x64)
         MKL_RT_URL=https://files.pythonhosted.org/packages/3c/13/8445ec0b958830f2342280193fd9271c261db9bbdb2f07e418dfe649ca1e/mkl-2022.2.1-py2.py3-none-manylinux1_x86_64.whl
@@ -36,6 +38,8 @@ case "$PLATFORM" in
         MKL_DEV_URL=
         MKL_INC_URL=https://files.pythonhosted.org/packages/a8/28/ee11a9b8f36dba4703dafda79ba463f9118e9f6bbea1b3258a3d9ea48c39/mkl_include-2022.2.1-py2.py3-none-manylinux1_x86_64.whl
         MKL_INC_SHA256=1af7c95646c58ce269e252cd52a2e36118d1c0df4a58fd3229297fbf11b653d1
+        MKL_OMP_URL=https://files.pythonhosted.org/packages/ae/56/e23cd9e2611ce3ef4395fa9af1da28ee91df43395456df8dba078d5a1630/intel_openmp-2022.2.1-py2.py3-none-manylinux1_x86_64.whl
+        MKL_OMP_SHA256=342c9e2b6e1500a9fb8d39828293ab5f9bb310b81fad7eba5c9d865001b95a7e
         ;;
     *)
         die "no oneMKL pins for $PLATFORM"
@@ -52,6 +56,15 @@ if [ ! -d "$MKL_PREFIX" ] || [ "${FORCE:-0}" = "1" ]; then
 
     fetch_verify "$MKL_INC_URL" "$MKL_INC_SHA256" "$WORK/deps/mkl-include.whl"
     unzip -q -o "$WORK/deps/mkl-include.whl" -d "$MKL_PREFIX/include-pkg"
+
+    # The Intel OpenMP runtime is a SEPARATE package that oneMKL depends on at
+    # run time: mkl_rt loads the threading layer, the threading layer needs
+    # libiomp5, and without it the solver dies before printing anything. That
+    # is exactly how it failed the first time — a build that linked cleanly and
+    # then produced no results at all. PrePoMax ships the same file beside its
+    # own ccx, which is the other half of the confirmation.
+    fetch_verify "$MKL_OMP_URL" "$MKL_OMP_SHA256" "$WORK/deps/intel-openmp.whl"
+    unzip -q -o "$WORK/deps/intel-openmp.whl" -d "$MKL_PREFIX/runtime"
 
     if [ -n "$MKL_DEV_URL" ]; then
         fetch_verify "$MKL_DEV_URL" "$MKL_DEV_SHA256" "$WORK/deps/mkl-devel.whl"
@@ -90,7 +103,12 @@ case "$PLATFORM" in
         ;;
 esac
 
-export MKL_INCLUDE_DIR MKL_RUNTIME_DIR MKL_LINK_LIB
+# Staging searches the whole tree rather than MKL_RUNTIME_DIR: oneMKL and the
+# Intel OpenMP runtime unpack into different directories, and shipping only the
+# first is the failure this variable exists to prevent.
+MKL_RUNTIME_ROOT="$MKL_PREFIX/runtime"
+
+export MKL_INCLUDE_DIR MKL_RUNTIME_DIR MKL_RUNTIME_ROOT MKL_LINK_LIB
 
 log "oneMKL $MKL_VERSION staged"
 log "  link:    $MKL_LINK_LIB"

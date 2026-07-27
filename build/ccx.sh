@@ -84,8 +84,15 @@ cp "$SRC_BUILD/$CCX_OUTPUT" "$OUT/"
 if [ "$WITH_PARDISO" = "1" ]; then
     log "staging the oneMKL runtime beside the executable"
     case "$PLATFORM" in
-        win-x64)   find "$MKL_RUNTIME_DIR" -maxdepth 1 -name '*.dll' -exec cp {} "$OUT/" \; ;;
-        linux-x64) find "$MKL_RUNTIME_DIR" -maxdepth 1 -name 'lib*.so*' -exec cp -P {} "$OUT/" \; ;;
+        win-x64)   find "$MKL_RUNTIME_ROOT" -name '*.dll' -exec cp {} "$OUT/" \; ;;
+        linux-x64) find "$MKL_RUNTIME_ROOT" -name 'lib*.so*' -exec cp -P {} "$OUT/" \; ;;
+    esac
+
+    # A kit that ships oneMKL without its OpenMP runtime links, starts, and
+    # then produces nothing.
+    case "$PLATFORM" in
+        win-x64)   ls "$OUT"/libiomp5md.dll >/dev/null 2>&1 || die "the Intel OpenMP runtime was not staged" ;;
+        linux-x64) ls "$OUT"/libiomp5.so >/dev/null 2>&1 || die "the Intel OpenMP runtime was not staged" ;;
     esac
 fi
 
