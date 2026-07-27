@@ -90,12 +90,20 @@ All three build green and pass upstream's acceptance suite. The size gap is the
 oneMKL runtime, which is most of what a Windows or Linux kit weighs.
 
 PaStiX is **staged everywhere and blocking nowhere**, now that the shim ships
-upstream's binary. A node whose `ccx` lacks a solver a deck asks for is a
-dispatch question, and the platform already answers it: controller archive
-variants carry `runtimeTargets` and `requiredCapabilities`, and clients
-advertise capabilities, so a variant can say which solvers its bundled `ccx`
-has. Capability is the right axis, not OS — macOS lacking PARDISO is
-OS-determined, but a Windows kit lacking PaStiX is not.
+upstream's binary.
+
+A node whose `ccx` lacks a solver a deck asks for is a dispatch question, and
+WitEngine is built for it: activities carry requirement attributes
+(`RequiresOs`, `RequiresResources`, `RequiresCustom(key, value)`, all deriving
+from `RequirementAttribute.IsSatisfiedBy(IWitCapabilities)`), and clients
+report their capabilities. So the CalculiX controller models one activity per
+solver, each declaring what it needs, and the script picks the activity from
+the deck's `SOLVER=` keyword.
+
+Advertise **one capability key per solver** — `ccx-solver-pardiso=true` rather
+than a comma-separated list — because `RequiresCustom` matches a single value
+exactly. `BUILDINFO.txt` in each kit is the source of truth for what to
+advertise, which is the same file the acceptance run already reads.
 
 `macos-arm64` cannot link PARDISO — Intel oneMKL is x86-64 only. A deck that
 asks for `SOLVER=PARDISO` therefore fails on a macOS node while succeeding on
