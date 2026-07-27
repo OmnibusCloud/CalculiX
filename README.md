@@ -58,11 +58,14 @@ the linked set matters, and why it is stated per platform below.
 
 ## Platform matrix
 
-| Platform | SPOOLES | ARPACK | PARDISO | PaStiX | Notes |
-|---|---|---|---|---|---|
-| `win-x64` | ✅ MT | ✅ | ✅ | staged | serves both consumers; built first |
-| `linux-x64` | ✅ MT | ✅ | ✅ | staged | controller asset |
-| `macos-arm64` | ✅ MT | ✅ | ❌ | staged | **no Intel oneMKL exists for arm64** |
+| Platform | SPOOLES | ARPACK | PARDISO | PaStiX | Kit size | Notes |
+|---|---|---|---|---|---|---|
+| `win-x64` | ✅ MT | ✅ | ✅ | staged | 228 MB | serves both consumers; built first |
+| `linux-x64` | ✅ MT | ✅ | ✅ | staged | 264 MB | controller asset |
+| `macos-arm64` | ✅ MT | ✅ | ❌ | staged | 2 MB | **no Intel oneMKL exists for arm64** |
+
+All three build green and pass upstream's acceptance suite. The size gap is the
+oneMKL runtime, which is most of what a Windows or Linux kit weighs.
 
 `macos-arm64` cannot link PARDISO — Intel oneMKL is x86-64 only. A deck that
 asks for `SOLVER=PARDISO` therefore fails on a macOS node while succeeding on
