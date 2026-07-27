@@ -49,12 +49,12 @@ jobs:
           FC: gfortran
           WITH_PASTIX: ${{ inputs.with_pastix && '1' || '0' }}
           CMAKE_EXTRA_ARGS: -G "MinGW Makefiles"
-        run: ./build/build.sh
+        run: sh build/build.sh
 
       - name: Verify
         env:
           VERIFY_ONLY: ${{ inputs.full_verify && '' || env.SMOKE_DECKS }}
-        run: ./build/verify.sh
+        run: sh build/verify.sh
 
       - uses: actions/upload-artifact@v4
         with:
@@ -78,12 +78,12 @@ jobs:
           CC: gcc
           FC: gfortran
           WITH_PASTIX: ${{ inputs.with_pastix && '1' || '0' }}
-        run: ./build/build.sh
+        run: sh build/build.sh
 
       - name: Verify
         env:
           VERIFY_ONLY: ${{ inputs.full_verify && '' || env.SMOKE_DECKS }}
-        run: ./build/verify.sh
+        run: sh build/verify.sh
 
       - uses: actions/upload-artifact@v4
         with:
@@ -104,12 +104,12 @@ jobs:
           FC: gfortran-14
           WITH_PARDISO: '0'
           WITH_PASTIX: ${{ inputs.with_pastix && '1' || '0' }}
-        run: ./build/build.sh
+        run: sh build/build.sh
 
       - name: Verify
         env:
           VERIFY_ONLY: ${{ inputs.full_verify && '' || env.SMOKE_DECKS }}
-        run: ./build/verify.sh
+        run: sh build/verify.sh
 
       - uses: actions/upload-artifact@v4
         with:
