@@ -1,0 +1,43 @@
+# Compilation control for the OmnibusCloud CalculiX builds.
+#
+# Upstream ships one Makefile per configuration (plain, _MT, _i8, _MFront) with
+# library paths hard-coded to the author's machine. This one takes CFLAGS,
+# FFLAGS and LIBS from the environment instead, so a single file covers all
+# three platforms and the flags stay visible in the build log.
+#
+# The object lists come from upstream's Makefile.inc, used verbatim — that is
+# the part that must track the release, and the part we must never edit.
+
+CCX_VERSION ?= 2.22
+CC          ?= cc
+FC          ?= gfortran
+CFLAGS      ?= -Wall -O2
+FFLAGS      ?= -Wall -O2
+LIBS        ?=
+CCX_OUTPUT  ?= ccx
+
+.c.o :
+	$(CC) $(CFLAGS) -c $< -o $@
+.f.o :
+	$(FC) $(FFLAGS) -c $< -o $@
+
+include Makefile.inc
+
+SCCXMAIN = ccx_$(CCX_VERSION).c
+
+OCCXF    = $(SCCXF:.f=.o)
+OCCXC    = $(SCCXC:.c=.o)
+OCCXMAIN = $(SCCXMAIN:.c=.o)
+
+all: $(CCX_OUTPUT)
+
+$(CCX_OUTPUT): $(OCCXMAIN) ccx.a
+	$(FC) $(FFLAGS) -o $@ $(OCCXMAIN) ccx.a $(LIBS)
+
+ccx.a: $(OCCXF) $(OCCXC)
+	ar rs $@ $?
+
+clean:
+	rm -f *.o ccx.a $(CCX_OUTPUT)
+
+.PHONY: all clean

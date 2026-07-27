@@ -1,0 +1,7 @@
+# No line-ending translation anywhere in this repository.
+#
+# upstream/ has to stay byte-for-byte identical to the tarball it was imported
+# from, or the corresponding-source claim in PROVENANCE.md is not true. The
+# build scripts have to stay LF because MSYS2 runs them. Both are served by
+# simply never converting anything.
+* -text
