@@ -7,6 +7,10 @@
 #   -std=gnu89   K&R-era implicit declarations and old-style definitions
 #   -fcommon     tentative definitions in headers, an error since GCC 10
 #   -w           the resulting noise would bury real diagnostics
+#
+# The -Wno- flags after that are not redundant with -w: clang 15 and later
+# promote these three from warnings to errors by default, and -w does not
+# demote an error. macOS hit exactly that, in transform.c.
 set -e
 
 . "$BUILD_DIR/lib.sh"
@@ -34,7 +38,7 @@ sed -i.bak 's/drawTree\.c/draw.c/' "$SPOOLES_DIR/Tree/src/makeGlobalLib"
 cat > "$SPOOLES_DIR/Make.inc" <<EOF
 CC = ${CC:-cc}
 OPTLEVEL = -O2
-CFLAGS = \$(OPTLEVEL) -std=gnu89 -fcommon -w -fPIC
+CFLAGS = \$(OPTLEVEL) -std=gnu89 -fcommon -w -fPIC -Wno-int-conversion -Wno-implicit-function-declaration -Wno-incompatible-pointer-types
 LDFLAGS =
 THREAD_LIBS = -lpthread
 PURIFY =

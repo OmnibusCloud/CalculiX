@@ -49,7 +49,15 @@ if [ "$WITH_PARDISO" = "1" ]; then LIBS="$LIBS $MKL_LINK_LIB"; fi
 LIBS="$LIBS -lpthread -lm"
 
 case "$PLATFORM" in
-    macos-*) LIBS="$LIBS -framework Accelerate" ;;
+    macos-*)
+        LIBS="$LIBS -framework Accelerate"
+        ;;
+    linux-x64)
+        # The oneMKL shared object ships beside the executable, so look there
+        # first and do not depend on the machine having MKL installed. The
+        # doubled $ survives make's expansion of a command-line variable.
+        LIBS="$LIBS -Wl,-rpath,\$\$ORIGIN"
+        ;;
 esac
 
 log "building CalculiX $CCX_VERSION for $PLATFORM"

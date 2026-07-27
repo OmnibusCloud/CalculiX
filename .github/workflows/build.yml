@@ -42,13 +42,17 @@ jobs:
             mingw-w64-x86_64-gcc-fortran
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-make
+            mingw-w64-x86_64-ninja
 
       - name: Build
         env:
           CC: gcc
           FC: gfortran
           WITH_PASTIX: ${{ inputs.with_pastix && '1' || '0' }}
-          CMAKE_EXTRA_ARGS: -G "MinGW Makefiles"
+          # Chosen through the environment rather than -G: a generator name
+          # with a space in it does not survive being passed through a shell
+          # variable, which is how the first attempt failed.
+          CMAKE_GENERATOR: Ninja
         run: sh build/build.sh
 
       - name: Verify

@@ -82,9 +82,11 @@ case "$PLATFORM" in
     linux-x64)
         MKL_RT_SO=$(find_one "$MKL_PREFIX/runtime" 'libmkl_rt.so.2')
         MKL_RUNTIME_DIR=$(dirname "$MKL_RT_SO")
-        # `-lmkl_rt` needs the unversioned name to resolve at link time.
-        [ -e "$MKL_RUNTIME_DIR/libmkl_rt.so" ] || ln -s libmkl_rt.so.2 "$MKL_RUNTIME_DIR/libmkl_rt.so"
-        MKL_LINK_LIB="-L$MKL_RUNTIME_DIR -lmkl_rt"
+        # An absolute path rather than `-L… -lmkl_rt`: this value is also
+        # handed to cmake as BLAS_LIBRARIES, which takes one token and would
+        # word-split a two-flag string. The linker records the library's
+        # SONAME either way, and the kit ships it beside the executable.
+        MKL_LINK_LIB="$MKL_RT_SO"
         ;;
 esac
 
