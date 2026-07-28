@@ -57,7 +57,12 @@ jobs:
 
       - name: Verify
         env:
-          VERIFY_ONLY: ${{ inputs.full_verify && '' || env.SMOKE_DECKS }}
+          # Written as "not full && subset || empty", NOT "full && empty ||
+          # subset". The second reads better and is silently broken: the true
+          # branch evaluates to the empty string, which is falsy, so `||` falls
+          # through and the subset wins even when the whole suite was asked
+          # for. A full-verification run reported success over four decks.
+          VERIFY_ONLY: ${{ !inputs.full_verify && env.SMOKE_DECKS || '' }}
         run: sh build/verify.sh
 
       - uses: actions/upload-artifact@v4
@@ -86,7 +91,12 @@ jobs:
 
       - name: Verify
         env:
-          VERIFY_ONLY: ${{ inputs.full_verify && '' || env.SMOKE_DECKS }}
+          # Written as "not full && subset || empty", NOT "full && empty ||
+          # subset". The second reads better and is silently broken: the true
+          # branch evaluates to the empty string, which is falsy, so `||` falls
+          # through and the subset wins even when the whole suite was asked
+          # for. A full-verification run reported success over four decks.
+          VERIFY_ONLY: ${{ !inputs.full_verify && env.SMOKE_DECKS || '' }}
         run: sh build/verify.sh
 
       - uses: actions/upload-artifact@v4
@@ -123,7 +133,12 @@ jobs:
 
       - name: Verify
         env:
-          VERIFY_ONLY: ${{ inputs.full_verify && '' || env.SMOKE_DECKS }}
+          # Written as "not full && subset || empty", NOT "full && empty ||
+          # subset". The second reads better and is silently broken: the true
+          # branch evaluates to the empty string, which is falsy, so `||` falls
+          # through and the subset wins even when the whole suite was asked
+          # for. A full-verification run reported success over four decks.
+          VERIFY_ONLY: ${{ !inputs.full_verify && env.SMOKE_DECKS || '' }}
         run: sh build/verify.sh
 
       - uses: actions/upload-artifact@v4

@@ -106,6 +106,7 @@ compare_run() {
       done )
 
     echo "  ($_count decks compared)" >&2
+    COMPARED="$_count"
 }
 
 section() {
@@ -221,7 +222,14 @@ if grep -qvE '^\s*$|^=====' "$REPORT" 2>/dev/null; then
     warn "differences reported:"
     cat "$REPORT"
 else
-    log "no differences — every deck agreed within upstream's tolerances"
+    # The count belongs in the success line. Without it, a four-deck smoke run
+    # and a 605-deck acceptance run print the same sentence — and one of them
+    # was read as the other.
+    if [ -n "${VERIFY_ONLY:-}" ]; then
+        warn "no differences over ${COMPARED:-0} decks — but this was the SUBSET '$VERIFY_ONLY', not the acceptance suite"
+    else
+        log "no differences over ${COMPARED:-0} decks — the whole acceptance suite agreed within upstream's tolerances"
+    fi
 fi
 
 exit $FAILED
