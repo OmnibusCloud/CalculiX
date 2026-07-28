@@ -244,6 +244,23 @@ the last for no benefit. Our builds are identified by the checksums published
 with each release, and the shim's `--doctor` reports the checksum of the `ccx`
 it resolved.
 
+## Releases
+
+| Release | Built from | Contents |
+|---|---|---|
+| [`ccx-v2.22-1`](https://github.com/OmnibusCloud/CalculiX/releases/tag/ccx-v2.22-1) | upstream 2.22, this pipeline | three platform kits + `SHA256SUMS` |
+
+```
+841de697ff1f5a912e664f0abea7b314e2f9108d082fd2ddc559683f3e2dd209  ccx-linux-x64.zip
+241f036a5f47642bce4e68782638fd6f49b6e8ca5a8f336735268b75241511bc  ccx-macos-arm64.zip
+0551a313a4e165f7759e7bba0534aa88e41c91a7f56f0268adcc84f4c4f54a17  ccx-win-x64.zip
+```
+
+Each kit carries its own `BUILDINFO.txt` with the flags it was built with, the
+solvers actually linked, and the checksum of every file beside it. That file is
+also what the acceptance run reads to decide which solvers to exercise — the
+kit describes itself rather than being described.
+
 ## What OmnibusCloud distributes
 
 | Artefact | Licence | Source |
