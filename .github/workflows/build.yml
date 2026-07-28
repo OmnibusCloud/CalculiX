@@ -44,6 +44,16 @@ jobs:
             mingw-w64-x86_64-make
             mingw-w64-x86_64-ninja
 
+      # Every dependency is pinned by checksum, so a cache hit is exactly the
+      # same bytes and cannot mask a change. This exists because a netlib
+      # outage failed a build that had nothing wrong with it.
+      - name: Cache the pinned dependency downloads
+        uses: actions/cache@v4
+        with:
+          path: .build/deps
+          key: deps-${{ runner.os }}-${{ hashFiles('build/config.sh', 'build/mkl.sh', 'build/verify.sh') }}
+          restore-keys: deps-${{ runner.os }}-
+
       - name: Build
         env:
           CC: gcc
@@ -91,6 +101,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc gfortran cmake make unzip perl
+
+      # Every dependency is pinned by checksum, so a cache hit is exactly the
+      # same bytes and cannot mask a change. This exists because a netlib
+      # outage failed a build that had nothing wrong with it.
+      - name: Cache the pinned dependency downloads
+        uses: actions/cache@v4
+        with:
+          path: .build/deps
+          key: deps-${{ runner.os }}-${{ hashFiles('build/config.sh', 'build/mkl.sh', 'build/verify.sh') }}
+          restore-keys: deps-${{ runner.os }}-
 
       - name: Build
         env:
@@ -144,6 +164,16 @@ jobs:
           echo "CC=$gcc_bin" >> "$GITHUB_ENV"
           echo "FC=$fc_bin" >> "$GITHUB_ENV"
           echo "using $gcc_bin and $fc_bin"
+
+      # Every dependency is pinned by checksum, so a cache hit is exactly the
+      # same bytes and cannot mask a change. This exists because a netlib
+      # outage failed a build that had nothing wrong with it.
+      - name: Cache the pinned dependency downloads
+        uses: actions/cache@v4
+        with:
+          path: .build/deps
+          key: deps-${{ runner.os }}-${{ hashFiles('build/config.sh', 'build/mkl.sh', 'build/verify.sh') }}
+          restore-keys: deps-${{ runner.os }}-
 
       - name: Build
         env:

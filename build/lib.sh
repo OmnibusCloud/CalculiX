@@ -36,8 +36,16 @@ fetch_verify() {
         rm -f "$_dest"
     fi
     log "fetching $(basename "$_dest")"
-    curl -fsSL --retry 3 --retry-delay 2 -o "$_dest.part" "$_url" \
-        || die "download failed: $_url"
+    # netlib and dhondt.de are single hosts with no CDN behind them, and a
+    # build that dies because one of them blinked is a build people learn to
+    # re-run rather than trust. Retry harder, on connection errors too, and say
+    # plainly that the failure was the network.
+    curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+         --connect-timeout 20 --max-time 900 \
+         -o "$_dest.part" "$_url" \
+        || die "download failed after retries: $_url
+This is a network failure, not a build failure — the file is pinned by
+checksum, so re-running is safe."
     _have=$(sha256_of "$_dest.part")
     [ "$_have" = "$_sha" ] || die "checksum mismatch for $_url
   expected $_sha

@@ -28,8 +28,16 @@ REFERENCE="$1"
 CANDIDATE="$2"
 LABEL="${3:-candidate}"
 
-[ -d "$REFERENCE" ] || die "reference result directory not found: $REFERENCE"
-[ -d "$CANDIDATE" ] || die "candidate result directory not found: $CANDIDATE"
+# A platform that did not finish is a gap in the measurement, not a reason to
+# fail the measurement of the others. Say which one is missing and stop.
+if [ ! -d "$REFERENCE" ]; then
+    warn "no result set for the reference platform ($REFERENCE) — nothing to compare $LABEL against"
+    exit 0
+fi
+if [ ! -d "$CANDIDATE" ]; then
+    warn "no result set for $CANDIDATE — that platform produced none this run"
+    exit 0
+fi
 
 need perl
 
