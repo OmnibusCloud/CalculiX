@@ -111,6 +111,62 @@ the others. That is a dispatch concern for the CalculiX controller (advertise
 the linked solver set per node, or normalise the keyword), not something a
 build flag can fix.
 
+## What is verified, and what is not
+
+Two different questions, and it is worth keeping them apart because only the
+first is about correctness.
+
+**Is each build correct?** Every platform runs upstream's own 605-deck
+acceptance suite with upstream's own tolerance checkers. All three pass with
+**no new deviations**. "New" is doing real work there: a handful of decks
+deviate from upstream's published results on a perfectly healthy build,
+including on the binary PrePoMax ships, so those are named one by one in
+[`build/known-deviations.txt`](build/known-deviations.txt) with the measurement
+that justifies each. They are not absorbed into a looser tolerance, which would
+have to be wide enough to hide real regressions too.
+
+**Do the platforms agree with each other?** `605 of 606 decks agree exactly`
+between every pair, checked deck by deck against `win-x64` — the only platform
+anchored twice, against the published results *and* against the binary PrePoMax
+ships. The 606th is `rotor2`, below.
+
+Agreement bounds the scatter a heterogeneous fleet can produce. It does not
+establish correctness — all three could be wrong together. Numbers for both are
+in [PROVENANCE.md](PROVENANCE.md).
+
+## Limitations
+
+Stated here rather than discovered later.
+
+- **PaStiX is not linked on any platform.** `ccx`'s default is SPOOLES and
+  PaStiX runs only when a deck names it, but **an unlinked solver in `ccx` is a
+  hard stop, not a fallback** — `*ERROR in linstatic: the PASTIX library is not
+  linked`, exit 201. Anyone who had selected PaStiX in their pre-processor would
+  meet a failure they did not have before. This is why the PrePoMax shim ships
+  upstream's binary rather than ours.
+- **macOS arm64 has no PARDISO**, because Intel oneMKL is x86-64 only. The
+  solver a PrePoMax-written deck asks for by default is therefore unavailable
+  there. Not a build flag away — a dispatch concern for whatever schedules work
+  onto macOS nodes.
+- **Thread count changes results on ill-conditioned decks.** Measured on one
+  machine and one binary, varying only `OMP_NUM_THREADS`: `rotor2`
+  (`*COMPLEX FREQUENCY`) converges to a *different number of modes*, so the
+  output files are not even the same length. Forcing MKL's kernel across all
+  four ISA levels changes nothing, so this is not kernel dispatch. **A fleet
+  whose nodes have different core counts will not agree on such a deck even
+  running the identical binary.**
+- **On contact problems, two honest builds of the same source differ by
+  percent, not round-off.** Measured against the binary PrePoMax ships:
+  `contact15`, `contact17`, `load1`. Any promise of determinism across machines
+  has to be a measured tolerance, and on this class it is a loose one.
+- **Verified against a reference set, not against a certification.** Upstream's
+  reference results are the ground truth used here; there is no independent
+  validation of CalculiX itself, and none is claimed.
+- **`.dat` comparison is blind to files of unequal length.** Upstream's
+  `datcheck.pl` has nothing to align and reports nothing, which reads exactly
+  like agreement. Both comparisons here check length first — any other harness
+  built on `datcheck.pl` must do the same.
+
 ## Building
 
 ```sh
