@@ -108,6 +108,35 @@ contact problems the achievable agreement between two honest builds is percent,
 not round-off. Determinism there has to be stated as a tolerance and measured,
 not assumed.
 
+### Thread count changes results, and that is worse than build differences
+
+Measured on one machine, one binary, varying nothing but `OMP_NUM_THREADS`, on
+`rotor2` (`*COMPLEX FREQUENCY` with Coriolis):
+
+| Threads | Output length | Mode 18 |
+|---|---|---|
+| 1 | 622 lines | `0.1029336E+06` |
+| 2 | 597 lines | `0.1187708E+06` |
+| 4 | 597 lines | `0.1187708E+06` |
+| 8 | 597 lines | `0.1187708E+06` |
+
+Not a tolerance question — a **different number of modes converged**, so the
+files are not even the same length. The same deck also produced 680 and 708
+lines on CI machines at one thread, and forcing MKL's kernel (`SSE4_2`, `AVX`,
+`AVX2`, `AVX512`) changes nothing, which rules out kernel dispatch: the
+eigensolver converges elsewhere whenever the arithmetic path shifts at all.
+
+Two consequences worth carrying:
+
+- Upstream's published reference for this deck agrees with the **multithreaded**
+  runs, while upstream's own `compare` script runs the suite at one thread. The
+  reference was produced under conditions other than the ones it is checked
+  under, which is why it looks like a defect and is not one.
+- **For a parameter sweep this outranks build-to-build differences.** Nodes
+  with different core counts will not agree on an ill-conditioned deck even
+  when they run the identical binary. A sweep that wants comparable variants
+  has to pin the thread count for the whole sweep, not leave it to each node.
+
 Reproduce with:
 
 ```sh

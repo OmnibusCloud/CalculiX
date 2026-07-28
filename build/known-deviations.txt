@@ -39,8 +39,26 @@ acou2        # eigenvector SIGN flip: -9.999949e-02 against +9.999949e-02.
              # arbitrary. Not an error at all; the checker compares signed
              # values against the block maximum and so reports 0.12%.
 
-# NOT listed, deliberately, and currently red on win-x64:
-#   rotor2   *COMPLEX FREQUENCY, 13% on one value — and upstream's binary DOES
-#            reproduce the published result here, so this one is ours. Suspect
-#            ARPACK inheriting a different LAPACK (oneMKL for us, OpenBLAS for
-#            the reference build). Leave it failing until it is explained.
+rotor2       # *COMPLEX FREQUENCY with Coriolis — this deck HAS NO STABLE ANSWER,
+             # and that is measured, not inferred. On one machine, one binary,
+             # varying only the thread count:
+             #
+             #   OMP_NUM_THREADS=1   622 lines, mode 18 = 0.1029336E+06
+             #   OMP_NUM_THREADS=2   597 lines, mode 18 = 0.1187708E+06
+             #   OMP_NUM_THREADS=4   597 lines, mode 18 = 0.1187708E+06
+             #   OMP_NUM_THREADS=8   597 lines, mode 18 = 0.1187708E+06
+             #
+             # The published reference agrees with the MULTITHREADED runs, and
+             # upstream's own `compare` script — like ours — runs the suite with
+             # OMP_NUM_THREADS=1. So the reference was produced under different
+             # conditions than the ones it is checked under.
+             #
+             # It also varies by machine: CI produced 680 and 708 lines on runs
+             # where this machine produces 622, all at one thread. Forcing MKL's
+             # kernel (SSE4_2 / AVX / AVX2 / AVX512) changes nothing, so kernel
+             # dispatch is not the cause; the eigensolver simply converges to a
+             # different set when the arithmetic path shifts at all.
+             #
+             # Not our defect, and not something a tolerance can express: the
+             # FILES have different lengths because a different number of modes
+             # converged.
