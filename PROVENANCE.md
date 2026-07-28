@@ -143,6 +143,37 @@ Reproduce with:
 REFERENCE_CCX='…/PrePoMax v2.5.0/Solver/ccx_dynamic.exe' build/verify.sh
 ```
 
+### All three platforms, and how far apart they sit
+
+Run 2026-07-28, `full_verify`, the whole suite on each platform:
+
+| Platform | Decks compared | Known deviations | **New** |
+|---|---|---|---|
+| `win-x64` | 599 | 11 | **0** |
+| `linux-x64` | 600 | 10 | **0** |
+| `macos-arm64` | 600 | 11 | **0** |
+
+And each platform against `win-x64`, deck by deck:
+
+| Comparison | Compared | Deviating | Not comparable |
+|---|---|---|---|
+| `linux-x64` vs `win-x64` | 605 | **0** | 1 (`rotor2`) |
+| `macos-arm64` vs `win-x64` | 605 | **0** | 1 (`rotor2`) |
+
+**605 of 606 decks agree exactly across all three platforms**, within upstream's
+own tolerances. The 606th is `rotor2`, the deck with no stable answer — it is
+not comparable by length, for the reason measured above.
+
+Windows is the reference for the cross-platform comparison because it is the
+only platform anchored twice: against upstream's published results and against
+the binary PrePoMax ships. Anchoring the others to it puts them one link from
+both.
+
+What this does and does not establish: agreement across platforms bounds the
+*scatter* a heterogeneous fleet can produce. It does not establish correctness
+— all three could be wrong together. Correctness is what the table above it
+answers, against upstream's published results. Both are needed.
+
 ### Linked solvers, and where we differ from the reference
 
 | Solver | Reference | Ours (`win-x64`) |
