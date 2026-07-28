@@ -1,0 +1,35 @@
+# Decks whose disagreement with upstream's published .dat.ref is not evidence
+# of a defect in our build. One deck name per line; everything after # is a
+# comment.
+#
+# This list is not a tolerance and must never become one. A tolerance loose
+# enough to swallow these would swallow real regressions too; naming the decks
+# keeps the gate tight everywhere else, and every entry has to say why.
+#
+# Measured 2026-07-27 on win-x64, 605 decks, by running the binary PrePoMax
+# ships against these same reference files. That binary is upstream's own
+# official Windows build, so a deck it cannot reproduce is a property of the
+# reference set, not of us.
+
+# --- upstream's own binary does not reproduce these either (9 decks) ---
+acou1        # acoustics
+beamfsh1     # fluid-structure
+beamptied5   # tied contact
+beamptied6   # tied contact
+beamt6       # beam
+contact15    # dynamic contact — active set can converge elsewhere
+contact17    # dynamic contact
+load1        # static contact
+truss2       # truss
+
+# --- justified individually ---
+acou2        # eigenvector SIGN flip: -9.999949e-02 against +9.999949e-02.
+             # Seven digits of agreement in magnitude, and eigenvector phase is
+             # arbitrary. Not an error at all; the checker compares signed
+             # values against the block maximum and so reports 0.12%.
+
+# NOT listed, deliberately, and currently red on win-x64:
+#   rotor2   *COMPLEX FREQUENCY, 13% on one value — and upstream's binary DOES
+#            reproduce the published result here, so this one is ours. Suspect
+#            ARPACK inheriting a different LAPACK (oneMKL for us, OpenBLAS for
+#            the reference build). Leave it failing until it is explained.
