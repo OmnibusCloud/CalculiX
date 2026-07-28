@@ -186,6 +186,18 @@ case "$BUILT_SOLVERS" in
         check_solver PASTIX >> "$REPORT" ;;
 esac
 
+# A result set from another platform, rather than another binary. Same
+# machinery, different question: not "is this correct" but "would two nodes of
+# a heterogeneous fleet answer the same". For a parameter sweep that is the
+# question that decides whether a difference between two variants is physics
+# or hardware.
+if [ -n "${REFERENCE_RESULTS:-}" ]; then
+    [ -d "$REFERENCE_RESULTS" ] || die "REFERENCE_RESULTS is not a directory: $REFERENCE_RESULTS"
+    log "D: our results against the ${REFERENCE_LABEL:-reference} result set"
+    section "D: ours vs ${REFERENCE_LABEL:-another platform} — cross-platform agreement"
+    compare_run "$WORK/verify/ours" "$REFERENCE_RESULTS" ".dat" "d-cross-platform" >> "$REPORT"
+fi
+
 if [ -n "${REFERENCE_CCX:-}" ]; then
     [ -x "$REFERENCE_CCX" ] || die "REFERENCE_CCX is not executable: $REFERENCE_CCX"
     log "running the same decks with the reference binary"

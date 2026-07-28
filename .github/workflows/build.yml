@@ -65,6 +65,14 @@ jobs:
           VERIFY_ONLY: ${{ !inputs.full_verify && env.SMOKE_DECKS || '' }}
         run: sh build/verify.sh
 
+      - name: Publish the result set for the cross-platform comparison
+        if: inputs.full_verify
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-win-x64
+          path: .build/verify/ours/*.dat
+          retention-days: 5
+
       - uses: actions/upload-artifact@v4
         with:
           name: ccx-win-x64
@@ -98,6 +106,14 @@ jobs:
           # for. A full-verification run reported success over four decks.
           VERIFY_ONLY: ${{ !inputs.full_verify && env.SMOKE_DECKS || '' }}
         run: sh build/verify.sh
+
+      - name: Publish the result set for the cross-platform comparison
+        if: inputs.full_verify
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-linux-x64
+          path: .build/verify/ours/*.dat
+          retention-days: 5
 
       - uses: actions/upload-artifact@v4
         with:
@@ -141,10 +157,41 @@ jobs:
           VERIFY_ONLY: ${{ !inputs.full_verify && env.SMOKE_DECKS || '' }}
         run: sh build/verify.sh
 
+      - name: Publish the result set for the cross-platform comparison
+        if: inputs.full_verify
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-macos-arm64
+          path: .build/verify/ours/*.dat
+          retention-days: 5
+
       - uses: actions/upload-artifact@v4
         with:
           name: ccx-macos-arm64
           path: .build/out/
+
+  cross-platform:
+    # Only run over the whole suite: four decks would say nothing about
+    # agreement, and this job exists to produce a number, not a green tick.
+    #
+    # Windows is the reference because it is the only platform anchored twice —
+    # against upstream's published results AND against the binary PrePoMax
+    # ships. Anchoring the others to it puts them one link from both.
+    if: inputs.full_verify
+    needs: [win-x64, linux-x64, macos-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: results-*
+          path: results
+
+      - name: Compare each platform against win-x64
+        run: |
+          sh build/cross-platform.sh results/results-win-x64 results/results-linux-x64 linux-x64
+          sh build/cross-platform.sh results/results-win-x64 results/results-macos-arm64 macos-arm64
 
   release:
     if: startsWith(github.ref, 'refs/tags/ccx-v')
@@ -161,7 +208,7 @@ jobs:
       - name: Package
         run: |
           cd artifacts
-          for d in */; do
+          for d in ccx-*/; do
             name=${d%/}
             (cd "$name" && zip -qr "../$name.zip" .)
             sha256sum "$name.zip" >> SHA256SUMS
