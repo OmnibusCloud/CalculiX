@@ -22,6 +22,17 @@ contact17    # dynamic contact
 load1        # static contact
 truss2       # truss
 
+# --- output SHAPE differs from the reference file, not just its numbers ---
+# Same measurement, same conclusion: the binary PrePoMax ships produces a
+# different number of lines from the published reference on 15 decks, these
+# five among them. datcheck.pl cannot compare files of unequal length, so until
+# the size check was added these were silently counted as agreeing.
+axrad2       # cavity radiation
+beamhtfc2    # forced convection
+beamread     # *RESTART, READ
+beamread2    # *RESTART, READ
+beamread4    # *RESTART, READ
+
 # --- justified individually ---
 acou2        # eigenvector SIGN flip: -9.999949e-02 against +9.999949e-02.
              # Seven digits of agreement in magnitude, and eigenvector phase is

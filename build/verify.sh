@@ -95,6 +95,20 @@ compare_run() {
         [ -e "$_f" ] || continue
         _job=$(basename "$_f" .dat)
         [ -f "$_expected/$_job$_suffix" ] || continue
+
+        # datcheck.pl compares line by line and reports NOTHING when the two
+        # files have different lengths — it simply has nothing to align. So a
+        # deck whose output changed shape reads exactly like a deck that
+        # agreed. Upstream's own `compare` script checks the line count first
+        # and treats a mismatch as an error; this one did not, and quietly
+        # counted six decks as agreeing that had never been compared.
+        _mine=$(wc -l < "$_f")
+        _theirs=$(wc -l < "$_expected/$_job$_suffix")
+        if [ "$_mine" != "$_theirs" ]; then
+            echo "size mismatch in file $_job.dat ($_mine lines against $_theirs in the reference)"
+            continue
+        fi
+
         cp "$_f" "$_dir/$_job.dat"
         cp "$_expected/$_job$_suffix" "$_dir/$_job.dat.ref"
         _count=$((_count + 1))
@@ -138,15 +152,16 @@ compare_run "$WORK/verify/ours" "$SUITE" ".dat.ref" "a-ours-vs-refs" > "$PHASE_A
 # build — and a check that is always red is a check nobody reads.
 NEW_DEVIATIONS=0
 KNOWN_SEEN=0
-for _deck in $(grep '^deviation in file' "$PHASE_A" | sed 's/^deviation in file //; s/\.dat$//'); do
+for _deck in $(grep -E '^(deviation|size mismatch) in file' "$PHASE_A" \
+                 | sed 's/^deviation in file //; s/^size mismatch in file //; s/\.dat.*$//'); do
     if is_known "$_deck"; then
         KNOWN_SEEN=$((KNOWN_SEEN + 1))
         echo "known    $_deck (see build/known-deviations.txt)" >> "$REPORT"
     else
         NEW_DEVIATIONS=$((NEW_DEVIATIONS + 1))
-        awk -v deck="deviation in file $_deck.dat" '
-            $0 == deck { p = 1 }
-            p && /^deviation in file/ && $0 != deck { p = 0 }
+        awk -v deck="$_deck.dat" '
+            $0 ~ ("^(deviation|size mismatch) in file " deck) { p = 1; print; next }
+            p && /^(deviation|size mismatch) in file/ { p = 0 }
             p { print }' "$PHASE_A" >> "$REPORT"
     fi
 done

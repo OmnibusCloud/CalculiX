@@ -55,6 +55,7 @@ cp "$SUITE/datcheck.pl" "$DIR/"
 
 COMPARED=0
 MISSING=0
+SIZE_MISMATCH=0
 for f in "$CANDIDATE"/*.dat; do
     [ -e "$f" ] || continue
     job=$(basename "$f" .dat)
@@ -62,6 +63,16 @@ for f in "$CANDIDATE"/*.dat; do
         MISSING=$((MISSING + 1))
         continue
     fi
+    # Unequal length means datcheck.pl has nothing to align and reports
+    # nothing at all — silence that reads exactly like agreement.
+    mine=$(wc -l < "$f")
+    theirs=$(wc -l < "$REFERENCE/$job.dat")
+    if [ "$mine" != "$theirs" ]; then
+        echo "size mismatch in file $job.dat ($mine lines against $theirs on the reference platform)"
+        SIZE_MISMATCH=$((SIZE_MISMATCH + 1))
+        continue
+    fi
+
     cp "$f" "$DIR/$job.dat"
     cp "$REFERENCE/$job.dat" "$DIR/$job.dat.ref"
     COMPARED=$((COMPARED + 1))
@@ -95,6 +106,7 @@ echo
 echo "===== $LABEL vs the reference platform ====="
 echo "decks compared:  $COMPARED"
 echo "decks deviating: $DEVIATIONS"
+echo "shape mismatches: $SIZE_MISMATCH   (not comparable line by line)"
 if [ "$DEVIATIONS" -gt 0 ]; then
     echo
     grep '^deviation in file' "$REPORT" | sed 's/^/  /'
