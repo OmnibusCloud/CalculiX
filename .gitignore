@@ -3,3 +3,8 @@
 *.a
 *.exe
 !upstream/**
+
+# Archives mirror.sh downloads before publishing them as release assets.
+# ~60 MB of other people's tarballs, reproducible from the pins in MIRROR.md —
+# the published release is where they live, not the history.
+redistribution/out/
