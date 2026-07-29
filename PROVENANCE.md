@@ -249,6 +249,7 @@ it resolved.
 | Release | Built from | Contents |
 |---|---|---|
 | [`ccx-v2.22-1`](https://github.com/OmnibusCloud/CalculiX/releases/tag/ccx-v2.22-1) | upstream 2.22, this pipeline | three platform kits + `SHA256SUMS` |
+| [`upstream-mirror-2.22`](https://github.com/OmnibusCloud/CalculiX/releases/tag/upstream-mirror-2.22) | nothing — a verbatim mirror | the Windows kit we redistribute, plus the corresponding source: ccx, SPOOLES, arpack-ng, hwloc + `SHA256SUMS`. **Append-only**: a new upstream version gets a new tag, because installers cite these files by checksum |
 
 ```
 841de697ff1f5a912e664f0abea7b314e2f9108d082fd2ddc559683f3e2dd209  ccx-linux-x64.zip
@@ -263,9 +264,27 @@ kit describes itself rather than being described.
 
 ## What OmnibusCloud distributes
 
+**Changed 2026-07-29: we now redistribute upstream's binary as well as our
+own builds.** The OmnibusCloud solver shim's full installer
+(`solver-v0.1.0-beta` onwards) carries `ccx_dynamic.exe` — the file described
+in "The reference binary" above, unmodified, checksum `1c1f4ad9…`. The reason
+is in that section and was confirmed in practice rather than argued: an
+ordinary deck from the corpus (`beamp`) selects PaStiX, which upstream links
+and our build does not, and `ccx` treats an unlinked solver as a hard stop.
+
+Redistributing it moves the GPL-2.0 section 3 obligation onto us, which is
+what [`redistribution/`](redistribution/) exists for: `mirror.sh` publishes
+the corresponding source here, publicly and without an account wall, and
+[`redistribution/MIRROR.md`](redistribution/MIRROR.md) records each archive
+with its checksum and with the evidence its version was established from. The
+notice shipped beside the binary (`Setup/Distribution/CALCULIX-NOTICE.txt` in
+the Simulation repository) states plainly that we did not compile it, and
+carries a three-year written offer for the parts not mirrored.
+
 | Artefact | Licence | Source |
 |---|---|---|
 | `ccx` binaries built here | GPL-2.0 | this repository |
-| SPOOLES, arpack-ng, PaStiX, Scotch (statically linked) | public domain / BSD / LGPL-compatible | pinned above |
+| **upstream's `ccx_dynamic.exe`, redistributed unmodified** | **GPL-2.0** | **`upstream-mirror-2.22`, and upstream** |
+| SPOOLES, arpack-ng, PaStiX, Scotch, hwloc (statically linked) | public domain / BSD / LGPL / CeCILL-C | pinned above and mirrored |
 | Intel oneMKL runtime | Intel Simplified Software License | Intel |
 | OmnibusCloud solver shim, controllers | proprietary | separate process, not linked |
