@@ -128,12 +128,20 @@ if [ "$PLATFORM" = "macos-arm64" ]; then
     _stage_macos_runtime() {
         # $1: a Mach-O file in $OUT; copies its toolchain dependencies in (recursively -
         # libgfortran itself needs libquadmath and libgcc_s) and rewrites the references.
+        # Homebrew's own dylibs name each other through @rpath (libgfortran ->
+        # @rpath/libgcc_s.1.1.dylib), so both spellings are resolved - the @rpath ones
+        # through the compiler's own search path.
         otool -L "$1" | awk 'NR>1 {print $1}' | while read -r _dep; do
             case "$_dep" in
-                /opt/homebrew/*|/usr/local/*)
+                /opt/homebrew/*|/usr/local/*|@rpath/*)
                     _name=$(basename "$_dep")
+                    case "$_dep" in
+                        @rpath/*) _src=$("${FC:-gfortran}" -print-file-name="$_name") ;;
+                        *)        _src=$_dep ;;
+                    esac
+                    [ -f "$_src" ] || die "cannot resolve the runtime dependency $_dep (of $1) on this machine"
                     if [ ! -f "$OUT/$_name" ]; then
-                        cp -L "$_dep" "$OUT/$_name" && chmod u+w "$OUT/$_name"                             && log "  staged runtime dependency $_name"
+                        cp -L "$_src" "$OUT/$_name" && chmod u+w "$OUT/$_name"                             && log "  staged runtime dependency $_name (from $_src)"
                         install_name_tool -id "@loader_path/$_name" "$OUT/$_name"
                         _stage_macos_runtime "$OUT/$_name"
                     fi
@@ -148,7 +156,7 @@ if [ "$PLATFORM" = "macos-arm64" ]; then
     done
     _leftovers=$(for _f in "$OUT/$CCX_OUTPUT" "$OUT"/*.dylib; do
         [ -f "$_f" ] && otool -L "$_f" | awk 'NR>1 {print $1}'
-    done | grep -E '^(/opt/homebrew|/usr/local)/' || true)
+    done | grep -E '^(/opt/homebrew|/usr/local|@rpath)/' || true)
     [ -z "$_leftovers" ] || die "the kit still references the build toolchain - it would not start on a machine without Homebrew GCC:
 $_leftovers"
     log "  runtime references of $CCX_OUTPUT: $(otool -L "$OUT/$CCX_OUTPUT" | awk 'NR>1 {print $1}' | tr '
