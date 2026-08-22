@@ -53,3 +53,15 @@ REFERENCE_CCX='/c/Workspace/OutWit/@Tools/PrePoMax v2.5.0/Solver/ccx_dynamic.exe
 
 which runs both binaries over the same 610 decks and compares ours to theirs
 directly. An empty report is the release gate.
+
+## macOS: the runtime travels with the executable
+
+The Homebrew GCC that builds `ccx` on macOS links `libgfortran`, `libgomp`,
+`libquadmath` (and, through them, `libgcc_s`) by absolute `/opt/homebrew` paths. A
+compute node has no Homebrew GCC, so `ccx.sh` stages those dylibs beside the
+executable, rewrites every reference to `@loader_path/<name>` (macOS's `$ORIGIN`),
+re-signs the kit ad hoc (install_name_tool invalidates arm64 signatures) and fails
+the build if any toolchain path survives - the bare-PATH start check cannot see
+the problem on the machine that built it. Found 2026-08-22: the first Apple Silicon
+compute node failed every variant with `dyld: Library not loaded ... libgfortran.5.dylib`
+(exit 134) on `ccx-v2.22-1`.

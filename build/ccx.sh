@@ -115,6 +115,46 @@ if [ "$PLATFORM" = "linux-x64" ]; then
     done
 fi
 
+# macOS: the Homebrew GCC that builds ccx links its runtime (libgfortran, libgomp,
+# libquadmath, libgcc_s) by ABSOLUTE /opt/homebrew paths, so a kit that starts on
+# the build machine dies with "dyld: Library not loaded" on every node without
+# Homebrew GCC (exit 134 - found 2026-08-22 on the first Apple Silicon compute
+# node, where every variant it was given failed). Stage the runtime beside the
+# executable and point every reference at @loader_path, the macOS spelling of
+# $ORIGIN; install_name_tool invalidates the arm64 signature, so re-sign ad hoc
+# afterwards. The bare-PATH start check below cannot see this on the build
+# machine (dyld finds the absolute paths there), hence the explicit gate.
+if [ "$PLATFORM" = "macos-arm64" ]; then
+    _stage_macos_runtime() {
+        # $1: a Mach-O file in $OUT; copies its toolchain dependencies in (recursively -
+        # libgfortran itself needs libquadmath and libgcc_s) and rewrites the references.
+        otool -L "$1" | awk 'NR>1 {print $1}' | while read -r _dep; do
+            case "$_dep" in
+                /opt/homebrew/*|/usr/local/*)
+                    _name=$(basename "$_dep")
+                    if [ ! -f "$OUT/$_name" ]; then
+                        cp -L "$_dep" "$OUT/$_name" && chmod u+w "$OUT/$_name"                             && log "  staged runtime dependency $_name"
+                        install_name_tool -id "@loader_path/$_name" "$OUT/$_name"
+                        _stage_macos_runtime "$OUT/$_name"
+                    fi
+                    install_name_tool -change "$_dep" "@loader_path/$_name" "$1"
+                    ;;
+            esac
+        done
+    }
+    _stage_macos_runtime "$OUT/$CCX_OUTPUT"
+    for _f in "$OUT/$CCX_OUTPUT" "$OUT"/*.dylib; do
+        [ -f "$_f" ] && codesign -s - --force "$_f" >/dev/null 2>&1
+    done
+    _leftovers=$(for _f in "$OUT/$CCX_OUTPUT" "$OUT"/*.dylib; do
+        [ -f "$_f" ] && otool -L "$_f" | awk 'NR>1 {print $1}'
+    done | grep -E '^(/opt/homebrew|/usr/local)/' || true)
+    [ -z "$_leftovers" ] || die "the kit still references the build toolchain - it would not start on a machine without Homebrew GCC:
+$_leftovers"
+    log "  runtime references of $CCX_OUTPUT: $(otool -L "$OUT/$CCX_OUTPUT" | awk 'NR>1 {print $1}' | tr '
+' ' ')"
+fi
+
 # On Windows the check below cannot see the difference between a self-contained
 # executable and one leaning on the MSYS2 installation that built it, because
 # that installation is on PATH here. Read the import table instead.
