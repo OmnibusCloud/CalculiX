@@ -70,7 +70,7 @@ which is byte-for-byte the official upstream Windows build (see
 | ARPACK | static (arpack-ng) |
 | PARDISO | Intel oneMKL, single dynamic library (`mkl_rt`) |
 | PaStiX | static, with Scotch |
-| Toolchain | GCC / gfortran (MSYS2 MinGW-w64 on Windows) |
+| Toolchain | GCC / gfortran (MSYS2 MinGW-w64 on Windows; winpthreads pinned to 13.0.0.r488 — 14.x makes every mutex a kernel wait, see `PROVENANCE.md`) |
 
 `ccx`'s own default solver is SPOOLES; PARDISO and PaStiX are selected only by
 an explicit `SOLVER=` on the step card. PrePoMax writes `Solver=Pardiso` by
@@ -170,6 +170,7 @@ Stated here rather than discovered later.
 ## Building
 
 ```sh
+build/toolchain-win.sh         # Windows only: pin winpthreads (once per MSYS2 installation)
 build/build.sh                 # host platform, default feature set
 WITH_PASTIX=1 build/build.sh   # add PaStiX (see build/README.md)
 ```

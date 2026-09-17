@@ -67,7 +67,18 @@ case "$PLATFORM" in
         ;;
 esac
 
+# A Windows kit on winpthreads 14.x is 1.8x slower on every deck (see
+# build/toolchain-win.sh); refuse to produce one rather than ship it again.
+TOOLCHAIN="${CC:-cc}: $(${CC:-cc} --version 2>/dev/null | head -1)"
+if [ "$PLATFORM" = "win-x64" ] && command -v pacman >/dev/null 2>&1; then
+    _wp=$(pacman -Q mingw-w64-x86_64-winpthreads 2>/dev/null | awk '{print $2}')
+    [ "$_wp" = "$WINPTHREADS_VERSION" ] \
+        || die "winpthreads is ${_wp:-unknown}, the kit must be built on $WINPTHREADS_VERSION - run build/toolchain-win.sh first"
+    TOOLCHAIN="$TOOLCHAIN; $(pacman -Q mingw-w64-x86_64-crt mingw-w64-x86_64-winpthreads mingw-w64-x86_64-gcc-libgfortran 2>/dev/null | tr '\n' ';')"
+fi
+
 log "building CalculiX $CCX_VERSION for $PLATFORM"
+log "  toolchain: $TOOLCHAIN"
 log "  CFLAGS: $CFLAGS"
 log "  LIBS:   $LIBS"
 
@@ -212,6 +223,7 @@ cp "$REPO_ROOT/PROVENANCE.md" "$OUT/PROVENANCE.md"
     echo "platform:  $PLATFORM"
     echo "solvers:   SPOOLES$([ "$WITH_MT" = 1 ] && echo ' (multithreaded)')$([ "$WITH_ARPACK" = 1 ] && echo ', ARPACK')$([ "$WITH_PARDISO" = 1 ] && echo ', PARDISO')$([ "$WITH_PASTIX" = 1 ] && echo ', PaStiX')"
     echo "cflags:    $CFLAGS"
+    echo "toolchain: $TOOLCHAIN"
     echo "built by:  OmnibusCloud/CalculiX ${GITHUB_SHA:-local}"
     echo
     echo "CalculiX is free software by Guido Dhondt and Klaus Wittig, licensed"

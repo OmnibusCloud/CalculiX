@@ -54,6 +54,12 @@ jobs:
           key: deps-${{ runner.os }}-${{ hashFiles('build/config.sh', 'build/mkl.sh', 'build/verify.sh') }}
           restore-keys: deps-${{ runner.os }}-
 
+      # winpthreads 14.x makes every uncontended mutex a kernel wait, and a
+      # static ccx.exe locks one per Fortran I/O statement: 1.8x slower on the
+      # reference deck. Pinned to the last fast version; see build/config.sh.
+      - name: Pin winpthreads
+        run: sh build/toolchain-win.sh
+
       - name: Build
         env:
           CC: gcc

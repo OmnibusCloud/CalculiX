@@ -235,6 +235,53 @@ not an oversight on our side.
 **Bundle size.** `ccx` is 48.5 MB and the MKL runtime is 207 MB, so the Windows
 kit is roughly **255 MB**, not the 50–100 MB estimated before measurement.
 
+### winpthreads (Windows only)
+
+The Windows kit links the MSYS2 MinGW-w64 runtime statically, and one piece of
+it decides how fast every deck runs: **winpthreads**, the pthreads layer that
+libgfortran locks on every Fortran I/O statement. mingw-w64 14.0.0 (MSYS2
+packages `14.0.0.r302` and later) made an uncontended `pthread_mutex_lock` /
+`unlock` a kernel wait plus a `SetEvent`. Parsing a deck is hundreds of
+thousands of those.
+
+Measured 2026-09-17 on one machine (Ryzen 9 5950X), the reference 20³ cube
+(8000 nodes, `benchmark.inp` of the CalculiX controller), PARDISO, same sources
+and flags throughout:
+
+| Kit | winpthreads | GCC | 16 threads | 1 thread |
+|---|---|---|---|---|
+| `ccx-v2.22-3` as shipped | 14.0.0.r302 | 16.1 | 1.53 s | 1.95 s |
+| rebuilt | 14.0.0.r375 | 16.2 | 1.43–1.53 s | 1.82 s |
+| rebuilt | 14.0.0.r375 | **15.2** | 1.49 s | 1.79 s |
+| rebuilt | **13.0.0.r488** | 16.2 | **0.66–0.74 s** | **1.01 s** |
+| rebuilt | 13.0.0.r488, CRT 13 | 15.2 | 0.63–0.70 s | 1.01 s |
+| upstream `ccx_dynamic.exe` 2.22 (2024-08-04) | 13-era | 13.2 / 14.1 | 0.67 s | 0.96 s |
+| our Linux kit, i7-8700K, 12 threads | — | 11.4 | 0.49 s | 0.98 s |
+
+A sampled profile of the slow kit at one thread puts 37% of its time in
+`ntdll!NtWaitForSingleObject` and 15% in `ntdll!NtSetEvent`; the fast kit
+spends 7% there. The compiler version does not matter, and neither does the
+CRT / headers version; only the two winpthreads packages do. The rebuilt kit
+writes byte-identical `.frd`, `.dat`, `.sta` and `.cvg` files (the `.frd`
+header carries the wall-clock date) at one and at sixteen threads, and passes
+the smoke subset of the acceptance suite with no new deviation.
+
+The same regression was reported independently by the Forest Vegetation
+Simulator project (a Fortran code, "approximately 4x" slower with GCC 16.2 /
+mingw-w64 14 in MSYS2, fixed by reverting the runtime).
+
+| Item | Value |
+|---|---|
+| `mingw-w64-x86_64-winpthreads-13.0.0.r488.g3fedac280-2-any.pkg.tar.zst` | `7baf6ed2ef8ded974fe0043a49b30c2849e3e2f82a5758edadd8ca0f973202f2` (43 662 bytes) |
+| `mingw-w64-x86_64-libwinpthread-13.0.0.r488.g3fedac280-2-any.pkg.tar.zst` | `ffddd28262c0707719cc85f3a6390809d1602906325ea86982c68accd548eda6` (31 001 bytes) |
+| Source | `https://repo.msys2.org/mingw/mingw64/` |
+
+`build/toolchain-win.sh` fetches the two files, verifies them and installs them
+with `pacman -U`; `build/ccx.sh` refuses to build a Windows kit on any other
+winpthreads version. GCC, the CRT and the headers are whatever MSYS2 ships on
+the day, as before. The pin is lifted when a winpthreads release makes the
+uncontended path cheap again, measured the same way.
+
 ## Reproducibility
 
 Upstream's `date.pl` rewrites `ccx_<version>.c` and `frd.c` to stamp the build
