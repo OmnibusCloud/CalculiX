@@ -17,6 +17,17 @@ ARPACK_SHA256=f6641deb07fa69165b7815de9008af3ea47eb39b2bb97521fbf74c97aba6e844
 # the engineer's previous local numbers rather than merely resembling them.
 MKL_VERSION=2022.2.1
 
+# Windows only: the winpthreads that ccx.exe links statically. mingw-w64 14.0.0
+# (MSYS2 packages 14.0.0.r302 and later) made an uncontended mutex lock/unlock a
+# kernel wait plus a SetEvent; libgfortran takes that mutex on every I/O
+# statement, and a kit built on it runs the reference deck 1.8x slower than the
+# same sources on this version (PROVENANCE.md, "winpthreads"). The two package
+# files are pinned by name and checksum and installed with pacman -U by
+# build/toolchain-win.sh; GCC, the CRT and the headers stay current.
+WINPTHREADS_VERSION=13.0.0.r488.g3fedac280-2
+WINPTHREADS_REPO=https://repo.msys2.org/mingw/mingw64
+WINPTHREADS_PACKAGES="mingw-w64-x86_64-winpthreads=7baf6ed2ef8ded974fe0043a49b30c2849e3e2f82a5758edadd8ca0f973202f2 mingw-w64-x86_64-libwinpthread=ffddd28262c0707719cc85f3a6390809d1602906325ea86982c68accd548eda6"
+
 # ---------------------------------------------------------------------------
 # Platform
 # ---------------------------------------------------------------------------
