@@ -34,12 +34,16 @@ jobs:
         with:
           msystem: MINGW64
           update: true
+          # libgomp is its own package since gcc 16.2.0-6 (2026-10-13), an
+          # optional dependency of gcc: without it the static link of ccx.exe
+          # fails with "cannot find -lgomp" (libgomp.a lives there now).
           install: >-
             base-devel
             unzip
             perl
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-gcc-fortran
+            mingw-w64-x86_64-libgomp
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-make
             mingw-w64-x86_64-ninja
@@ -151,7 +155,7 @@ jobs:
           path: .build/out/
 
   macos-arm64:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
